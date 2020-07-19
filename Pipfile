@@ -4,8 +4,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pytest = "*"
 
 [packages]
+requests = "*"
+click = "*"
+jsonschema = "*"
+yarl = "*"
+lxml = "*"
+jinja2 = "*"
 
 [requires]
 python_version = "3.8"

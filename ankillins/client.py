@@ -8,12 +8,14 @@ import yarl
 from lxml import etree, html
 
 from .errors import WrongResponse, NotFound
+from .constants import USER_AGENT
 
 
 @dataclasses.dataclass()
 class WordUsageExample:
     text: str
-    pronounce: str = None
+    pronounce_url: str = None
+    pronounce_path: str = None
 
 
 @dataclasses.dataclass()
@@ -32,30 +34,26 @@ class WordDefinition:
 class Word:
     word: str
     frequency: int
-    pronounce: str
+    pronounce_url: str
     definitions: ty.Sequence[WordDefinition]
+    pronounce_filename: str = None
 
 
 # Collins Dictionary hasn't respond to my request for API access, so I have to scrape it :(
 
 class Collins:
     _SEARCH_API_URL = 'https://www.collinsdictionary.com/autocomplete/'
+    _SEARCH_HINTS_URL = 'https://www.collinsdictionary.com/autocomplete/'
     _SEARCH_VALIDATE_SCHEMA = {'type': 'array', 'items': {'type': 'string'}}
     _DICT_WORD_URL = 'https://www.collinsdictionary.com/dictionary/english/'
-    _DICT_CLASSES = ['dictionary Cob_Adv_Brit dictentry',
-                     'dictionary Cob_Adv_Brit',
-                     'dictionaries dictionary dictionary Collins_Eng_Dict',
-                     'dictionaries dictionary dictionary Cob_Adv_Brit',
-                     'dictionary Collins_Eng_Dict dictentry',
-                     ]
 
     def __init__(self):
         self._session = rq.Session()
         self._session.headers.update({
-            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+            'user-agent': USER_AGENT,
         })
 
-    def _get_word(self, word: str):
+    def get_word(self, word: str):
         if ' ' in word:
             word = word.replace(' ', '-')
         url = yarl.URL(self._DICT_WORD_URL) / word
@@ -76,13 +74,12 @@ class Collins:
         )[0]
         frequency = word.find('.//span[@class="word-frequency-img"]')
         if frequency is not None:
-            frequency = frequency.get('data-band')
-        pronounce = word.find('.//a[@class="hwd_sound sound audio_play_button icon-volume-up ptr"]')
+            frequency = int(frequency.get('data-band'))
+        pronounce = word.find(
+            './/span[@class="pron type-"]//a[@class="hwd_sound sound audio_play_button icon-volume-up ptr"]')
         if pronounce is not None:
             pronounce = pronounce.get('data-src-mp3')
         word_text = word.find('.//h2[@class="h2_entry"]/span[@class="orth"]').text
-        # definitions = word.find('./div[@class="content definitions cobuild br "]') or word.find(
-        #     './div[@class="content definitions ced"]')
         definitions = word.xpath('./div[contains(@class,"content definitions")]')[0]
         if not definitions:
             # todo: scrape peace of speech
@@ -95,13 +92,12 @@ class Collins:
         parsed_definitions = []
         for definition in definitions.xpath('.//div[@class="hom"]'):
             definition: etree._Element
-            part_of_speech = definition.find('./span[@class="gramGrp pos"]')
-            if part_of_speech is None:
-                part_of_speech = definition.find('./span[@class="gramGrp"]/span[@class="pos"]')
-                if part_of_speech is not None:
-                    part_of_speech = part_of_speech.text
+            if (x := definition.find('./span[@class="gramGrp pos"]')) is not None:
+                part_of_speech = x.text
+            elif (x := definition.find('./span[@class="gramGrp"]/span[@class="pos"]')) is not None:
+                part_of_speech = x.text
             else:
-                part_of_speech = part_of_speech.text
+                continue
             senses = []
             for sense in definition.xpath('./div[@class="sense"]'):
                 def_text = ''.join(sense.find('./div[@class="def"]').itertext()).replace('\n', '')
@@ -116,9 +112,6 @@ class Collins:
                 senses.append(Sense(def_text, examples))
             parsed_definitions.append(WordDefinition(senses, part_of_speech))
         return Word(word_text, frequency, pronounce, parsed_definitions)
-
-    def get_words(self, words: ty.Sequence[str]):
-        ...
 
     def _validate_response(self,
                            r: rq.Response,
@@ -138,7 +131,7 @@ class Collins:
             'dictCode': 'english',
             'q': word,
         }
-        response = self._session.get('https://www.collinsdictionary.com/autocomplete/', params=params)
+        response = self._session.get(self._SEARCH_HINTS_URL, params=params)
         try:
             self._validate_response(response, self._SEARCH_VALIDATE_SCHEMA, allow_error_codes=False)
         except jsonschema.ValidationError:

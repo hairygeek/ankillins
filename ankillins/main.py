@@ -1,5 +1,13 @@
-from ankillins.client import Word
+import time
+from os import path
+import csv
+import typing as ty
+
+from ankillins.client import Word, Collins
 from jinja2 import Environment, PackageLoader, select_autoescape
+import requests as rq
+
+from .constants import ANKI_MEDIA_DIR, USER_AGENT
 
 env = Environment(
     loader=PackageLoader('ankillins', 'templates'),
@@ -7,9 +15,48 @@ env = Environment(
 )
 
 
-def generate_page(word: Word):
-    template = env.get_template('index.html')
-    t = template.render(word=word)
-    with open('/home/hairygeek/PycharmProjects/ankillins/ankillins/templates/res.html', 'w') as fp:
-        fp.write(t)
-    return t
+def generate_page_card(word: Word):
+    card_template = env.get_template('back.html')
+    _download_audio_files_to_anki_dir_and_update_word(word)
+    back = card_template.render(word=word)
+    return back
+
+
+def process_words(words: ty.Sequence[str], file_path: str):
+    client = Collins()
+    with open(file_path, 'w', newline='') as fp:
+        writer = csv.writer(fp, delimiter='~', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for word_str in words:
+            word = client.get_word(word_str)
+            writer.writerow(generate_page_card(word))
+
+
+def _download_file_by_url(url: str, path: str):
+    headers = {
+        'user-agent': USER_AGENT
+    }
+    r = rq.get(url, headers=headers)
+    r.raise_for_status()
+    open(path, 'wb').write(r.content)
+
+
+def _download_audio_files_to_anki_dir_and_update_word(word: Word):
+    timestamp = int(time.time())
+    if word.pronounce_url:
+        file_name = '%s_%s.mp3' % (_text_to_filename(word.word), timestamp)
+        file_path = path.join(ANKI_MEDIA_DIR, file_name)
+        _download_file_by_url(word.pronounce_url, file_path)
+        word.pronounce_filename = file_name
+    for d in word.definitions:
+        for s in d.senses:
+            for ex in s.examples:
+                if not ...:
+                    # temporary lock the feature
+                    file_name = '%s_%s.mp3' % (_text_to_filename(ex.text), timestamp)
+                    file_path = path.join(ANKI_MEDIA_DIR, file_name)
+                    _download_file_by_url(ex.pronounce_url, file_path)
+                    ex.pronounce_path = file_name
+
+
+def _text_to_filename(string: str):
+    return ''.join(s for s in string.replace(' ', '_') if s.isalpha() or s.isnumeric() or s == '_')

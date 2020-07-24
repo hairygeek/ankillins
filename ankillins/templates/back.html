@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="../../card_styles.css?vercion=2">
+
+</head>
+<body>
+<div class="res_cell_center">
+    <div class="dc res_cell_center_content">
+        <div class="he">
+            <div class="page">
+                <div class="dictionaries dictionary">
+                    <div class="dictionary Cob_Adv_Brit dictentry">
+                        <div class="dictlink">
+                            <div class="cB cB-def cobuild br ">
+                                <div class="cB-h">
+                                    <div class="title_container">
+                                        <h2 class="h2_entry"><span class="orth">{{word.word}}{{('[sound:' + word.pronounce_filename + ']') if word.pronounce_filename}}</span>
+                                        </h2>
+                                        <div class="title_frequency_container">
+                                            <div class="word-frequency-container res_hos frenquency-title">
+                                                <div class="label">Word Frequency</div>
+                                                <span class="word-frequency-img">
+                                                    {% for n in range(word.frequency or 0) %}
+                                                    <span class="level level{{n + 1}} roundRed "></span>
+                                                    {% endfor %}
+                                                </span>
+                                            </div>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mini_h2"><span class=" punctuation">
+                                    <a class="hwd_sound sound audio_play_button icon-volume-up ptr"
+                                       data-src-mp3="https://www.collinsdictionary.com/sounds/hwd_sounds/50599.mp3"></a>
+                                    </span></span><span class=" punctuation"></span>
+                                </div>
+
+                                <div class="content definitions cobuild br ">
+                                    {% for def in word.definitions%}
+                                    {% set def_loop = loop %}
+                                    <div class="hom"><span class=" sensenum">{{loop.index}}.&nbsp;</span><span
+                                            class="gramGrp pos">{{def.peace_of_speech}}</span>
+                                        {% for sense in def.senses %}
+                                        <div class="def">{{'{{c%s::%s}}' % (def_loop.index, sense.text)}}</div>
+                                        {% for ex in sense.examples %}
+                                        <div class="cit type-example">
+                                            <span class="quote">{{ex.text}}{{('[sound:' + ex.pronounce_path + ']') if ex.pronounce_path}}</span>
+                                        </div>
+                                        {% endfor %}
+                                        {% endfor %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+
+    </div>
+</div>
+</div>
+</div>
+
+</body>
+</html>

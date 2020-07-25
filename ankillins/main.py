@@ -3,11 +3,12 @@ from os import path
 import csv
 import typing as ty
 
-from ankillins.client import Word, Collins
 from jinja2 import Environment, PackageLoader, select_autoescape
 import requests as rq
+from colorama import Fore, Style
 
 from .constants import ANKI_MEDIA_DIR, USER_AGENT
+from ankillins.client import Word, Collins
 
 env = Environment(
     loader=PackageLoader('ankillins', 'templates'),
@@ -28,7 +29,8 @@ def process_words(words: ty.Sequence[str], file_path: str):
         writer = csv.writer(fp, delimiter='~', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for word_str in words:
             word = client.get_word(word_str)
-            writer.writerow(generate_page_card(word))
+            writer.writerow((generate_page_card(word),))
+            print(f'Word "{word_str}" processed {Fore.GREEN + "successfully" + Style.RESET_ALL}')
 
 
 def _download_file_by_url(url: str, path: str):

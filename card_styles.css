@@ -310,22 +310,13 @@ h2.h2_entry {
     margin-bottom: .5em;
     margin-top: .5em;
 }
-/*media all*/
 @media only screen and (max-width: 1200px){
 	.title_container{
 		max-width:400px;
 	}
 }
-/*@media only screen and (max-width: 768px){*/
-/*	.word-frequency-container.res_hos.frenquency-title{*/
-/*		display:none;*/
-/*		color:green;*/
-/*	}*/
-/*	.dc .cB {*/
-/*		padding-top: 0;*/
-/*		padding-left: 15px;*/
-/*	}*/
-/*	.res_cell_center_content, .res_cell_2_3_content {*/
-/*		padding: 0;*/
-/*	}*/
-/*}*/
+
+.cloze {
+    color: red;
+    font-weight: bold;
+}

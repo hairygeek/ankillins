@@ -13,8 +13,8 @@ jsonschema = "*"
 yarl = "*"
 lxml = "*"
 jinja2 = "*"
-aqt = "*"
-pyqtwebengine = "*"
+tenacity = "*"
+colorama = "*"
 
 [requires]
 python_version = "3.8"

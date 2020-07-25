@@ -6,6 +6,7 @@ import requests as rq
 import jsonschema
 import yarl
 from lxml import etree, html
+import tenacity as tnc
 
 from .errors import WrongResponse, NotFound
 from .constants import USER_AGENT
@@ -81,14 +82,6 @@ class Collins:
             pronounce = pronounce.get('data-src-mp3')
         word_text = word.find('.//h2[@class="h2_entry"]/span[@class="orth"]').text
         definitions = word.xpath('./div[contains(@class,"content definitions")]')[0]
-        if not definitions:
-            # todo: scrape peace of speech
-            word_def = word.find('.//div[@class="hom sense"]/div[@class="def"]').text
-            print(word_def)
-            sense = Sense(word_def)
-            word_definition = WordDefinition([sense])
-            return Word(word_text, frequency, [word_definition])
-
         parsed_definitions = []
         for definition in definitions.xpath('.//div[@class="hom"]'):
             definition: etree._Element
@@ -126,17 +119,12 @@ class Collins:
             raise WrongResponse
         jsonschema.validate(instance=json_resp, schema=validate_schema)
 
-    def search(self, word: str, attempts: int = 3):
+    @tnc.retry(stop=tnc.stop_after_attempt(3))
+    def search(self, word: str):
         params = {
             'dictCode': 'english',
             'q': word,
         }
         response = self._session.get(self._SEARCH_HINTS_URL, params=params)
-        try:
-            self._validate_response(response, self._SEARCH_VALIDATE_SCHEMA, allow_error_codes=False)
-        except jsonschema.ValidationError:
-            if attempts:
-                return self.search(word, attempts - 1)
-            else:
-                raise WrongResponse
+        self._validate_response(response, self._SEARCH_VALIDATE_SCHEMA, allow_error_codes=False)
         return response.json()

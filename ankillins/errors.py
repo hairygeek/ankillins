@@ -2,15 +2,8 @@ import typing as ty
 
 
 class WrongResponse(RuntimeError):
-    _default_message = 'Server sent wrong response'
-
-
-class NoResponse(RuntimeError):
-    _default_message = 'Server does not respond'
-
-
-class Forbidden(WrongResponse):
-    _default_message = 'Forbidden error. Please check your access token and limits'
+    def __str__(self):
+        return 'Server sent wrong response.'
 
 
 class NotFound(RuntimeError):
@@ -20,4 +13,4 @@ class NotFound(RuntimeError):
         self.suggestions = suggestions
 
     def __str__(self):
-        return f'No rersults. Suggestions: {" ".join(self.suggestions)}'
+        return f"Word {self.word} not found"

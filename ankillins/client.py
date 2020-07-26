@@ -60,19 +60,20 @@ class Collins:
         url = yarl.URL(self._DICT_WORD_URL) / word
         r = self._session.get(str(url))
         r.raise_for_status()
-        parsed_page: etree._Element = etree.parse(io.StringIO(r.text), parser=etree.HTMLParser())
+        parsed_page: etree._Element = html.fromstring(r.text)
         if parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a'):
             raw_suggestions = parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a')
             suggestions = [tag.text for tag in raw_suggestions]
             raise NotFound(word, suggestions)
-        return self._parse_word(r.text)
+        dictionary = parsed_page.xpath(f'.//div[contains(@class, "dictionaries")]/div[contains(@class,"dictionary")]')[
+            0]
+        words = dictionary.xpath('./div[contains(@class,"dictlink")]/div')
+        out = []
+        for w in words:
+            out.append(self._parse_word(w))
+        return out
 
-    def _parse_word(self, word_page: str):
-        # todo: scrape other dictionaries
-        parsed_page: etree._Element = html.fromstring(word_page)
-        word: etree._Element = parsed_page.xpath(
-            f'.//div[contains(@class,"dictionary")]/div[contains(@class,"dictlink")]/div'
-        )[0]
+    def _parse_word(self, word: etree._Element) -> Word:
         frequency = word.find('.//span[@class="word-frequency-img"]')
         if frequency is not None:
             frequency = int(frequency.get('data-band'))

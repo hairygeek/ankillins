@@ -23,16 +23,6 @@ def generate_page_card(word: Word):
     return back
 
 
-def process_words(words: ty.Sequence[str], file_path: str):
-    client = Collins()
-    with open(file_path, 'w', newline='') as fp:
-        writer = csv.writer(fp, delimiter='~', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for word_str in words:
-            words = client.get_word(word_str)
-            for word in words:
-                writer.writerow((generate_page_card(word),))
-            print(f'Word "{word_str}" processed {Fore.GREEN + "successfully" + Style.RESET_ALL}')
-
 
 def _download_file_by_url(url: str, path: str):
     headers = {

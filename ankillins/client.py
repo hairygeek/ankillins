@@ -61,9 +61,11 @@ class Collins:
         r = self._session.get(str(url))
         r.raise_for_status()
         parsed_page: etree._Element = html.fromstring(r.text)
-        if parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a'):
-            raw_suggestions = parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a')
-            suggestions = [tag.text for tag in raw_suggestions]
+        if parsed_page.xpath('//p[@class="suggest_new_word"]'):
+            suggestions = []
+            if parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a'):
+                raw_suggestions = parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a')
+                suggestions = [tag.text for tag in raw_suggestions]
             raise NotFound(word, suggestions)
         dictionary = parsed_page.xpath(f'.//div[contains(@class, "dictionaries")]/div[contains(@class,"dictionary")]')[
             0]

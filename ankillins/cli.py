@@ -1,5 +1,6 @@
 import typing as ty
 import sys
+import csv
 
 import click
 import colorama
@@ -7,12 +8,17 @@ from colorama import Fore, Style
 import requests.exceptions
 
 from .client import Collins
-from .main import process_words
+from .constants import CANNOT_CONNECT_TEXT, CANNOT_GENERATE_CARD
+from .main import generate_page_card
 from .errors import WrongResponse, NotFound
 
 
+def _generate_error_message(error_text: str) -> str:
+    return f'[{Fore.RED + "Error" + Style.RESET_ALL}] {error_text}'
+
+
 def exit_with_error(error_text: str):
-    print(f'[{Fore.RED + "Error" + Style.RESET_ALL}] {error_text}')
+    print(_generate_error_message(error_text))
     sys.exit(1)
 
 
@@ -25,10 +31,10 @@ class ErrorHandlingGroup(click.Group):
         except WrongResponse as e:
             exit_with_error(str(e) + ' Try again later.')
         except requests.exceptions.ConnectionError:
-            exit_with_error('Cannot connect to Collins. Check your Ethernet connection and try again.')
+            exit_with_error(CANNOT_CONNECT_TEXT)
 
 
-@click.group()
+@click.group(cls=ErrorHandlingGroup)
 @click.pass_context
 def ankillins(ctx: click.Context):
     colorama.init()
@@ -50,10 +56,23 @@ def search(ctx: click.Context, word: str):
 @click.pass_context
 def gen_cards(ctx: click.Context, words: ty.Sequence[str], result_path: str = None):
     client: Collins = ctx.obj['client']
-    parsed = []
-    for w in words:
-        parsed.append(client.get_word(w))
-    process_words(words, result_path or './result.csv')
+    with open(result_path or './ankillins-result.csv', 'w', newline='') as fp:
+        writer = csv.writer(fp, delimiter='~', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for word_str in words:
+            try:
+                parsed = client.get_word(word_str)
+            except NotFound as e:
+                print(_generate_error_message(str(e) + f'\nSimilar words: {", ".join(e.suggestions)}'))
+                continue
+            except requests.exceptions.ConnectionError:
+                print(_generate_error_message(CANNOT_GENERATE_CARD.format(word_str, CANNOT_CONNECT_TEXT)))
+                continue
+            except Exception:
+                print(_generate_error_message(CANNOT_GENERATE_CARD.format(word_str, 'Unknown error')))
+                continue
+            for word in parsed:
+                writer.writerow((generate_page_card(word),))
+            print(f'Word "{word_str}" processed {Fore.GREEN + "successfully" + Style.RESET_ALL}')
 
 
 def main():

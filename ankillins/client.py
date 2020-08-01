@@ -67,12 +67,14 @@ class Collins:
                 raw_suggestions = parsed_page.xpath('//div[@class="suggested_words"]/ul/li/a')
                 suggestions = [tag.text for tag in raw_suggestions]
             raise NotFound(word, suggestions)
-        dictionary = parsed_page.xpath(f'.//div[contains(@class, "dictionaries")]/div[contains(@class,"dictionary")]')[
-            0]
-        words = dictionary.xpath('./div[contains(@class,"dictlink")]/div')
+        dictionary = (
+                parsed_page.xpath(f'.//div[contains(@class, "dictionaries")]/div[contains(@class,"dictionary")]')
+                or parsed_page.xpath(f'.//div[contains(@class, "dictionaries")]')
+        )[0]
+        words = dictionary.xpath('./div[contains(@class,"dictlink")]')
         out = []
         for w in words:
-            out.append(self._parse_word(w))
+            out.append(self._parse_word(w.find('./div')))
         return out
 
     def _parse_word(self, word: etree._Element) -> Word:
@@ -86,22 +88,28 @@ class Collins:
         word_text = word.find('.//h2[@class="h2_entry"]/span[@class="orth"]').text
         definitions = word.xpath('./div[contains(@class,"content definitions")]')[0]
         parsed_definitions = []
-        for definition in definitions.xpath('.//div[@class="hom"]'):
+        for definition in definitions.xpath('.//div[contains(@class,"hom")]'):
             definition: etree._Element
             if (x := definition.find('./span[@class="gramGrp pos"]')) is not None:
                 part_of_speech = x.text
             elif (x := definition.find('./span[@class="gramGrp"]/span[@class="pos"]')) is not None:
                 part_of_speech = x.text
+            elif (x := definition.find('./div[@class="def"]')) is not None:
+                def_text = ''.join(x.itertext()).replace('\n', '')
+                return Word(word_text, frequency, pronounce, [WordDefinition([Sense(def_text)])])
             else:
                 continue
             senses = []
             for sense in definition.xpath('./div[@class="sense"]'):
                 def_text = ''.join(sense.find('./div[@class="def"]').itertext()).replace('\n', '')
                 examples = []
-                for example in sense.xpath('./div[@class="cit type-example"]'):
-                    text = example.find('./span[@class="quote"]').text.replace('\n', ' ')
+                for example in (sense.xpath('./div[@class="cit type-example"]/span[@class="quote"]') +
+                                sense.xpath('./div[@class="cit type-example quote"]')
+                ):
+                    # text = example.find('./span[@class="quote"]').text.replace('\n', ' ')
+                    text = example.text.replace('\n', ' ')
                     audio_url = None
-                    audio = example.find('./span[@class="ptr exa_sound type-exa_sound"]/a')
+                    audio = example.find('..//span[@class="ptr exa_sound type-exa_sound"]/a')
                     if audio is not None:
                         audio_url = audio.get('data-src-mp3')
                     examples.append(WordUsageExample(text, audio_url))
